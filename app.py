@@ -16,23 +16,30 @@ def index():
 
 @app.route(f"/webhook/{BOT_TOKEN}", methods=["POST"])
 def webhook():
-    data = request.get_json()
+    try:
+        data = request.get_json()
+        print("Incoming data:", data)  # 👈 log to Render console
 
-    if "message" in data:
-        chat_id = data["message"]["chat"]["id"]
-        text = data["message"].get("text", "")
+        if "message" in data:
+            chat_id = data["message"]["chat"]["id"]
+            text = data["message"].get("text", "")
 
-        # OpenAI GPT-3.5 response
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": text}]
-        )
-        reply = response['choices'][0]['message']['content']
+            if not text:
+                reply = "Sorry, I can only respond to text messages for now."
+            else:
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": text}]
+                )
+                reply = response['choices'][0]['message']['content']
 
-        # Send reply back to user
-        requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
-            "chat_id": chat_id,
-            "text": reply
-        })
+            requests.post(f"{TELEGRAM_API_URL}/sendMessage", json={
+                "chat_id": chat_id,
+                "text": reply
+            })
 
-    return {"ok": True}
+        return {"ok": True}
+
+    except Exception as e:
+        print("Error in webhook:", e)
+        return {"ok": False, "error": str(e)}, 500
